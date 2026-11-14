@@ -9,10 +9,11 @@ on:
 
 jobs:
   build-test-and-lint:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         project:
           - name: dictionary
             path: lab1/english_russian_dictionary
@@ -27,35 +28,46 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build, lint and coverage tools
+      - name: Install tools (Linux)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake g++ cppcheck gcovr
 
-      - name: Run Static Analysis (Cppcheck)
+      - name: Install tools (Windows)
+        if: runner.os == 'Windows'
         run: |
-          # Убрали style, чтобы не ругался на циклы в TuringMachine
+          choco install cmake cppcheck -y
+
+      - name: Run Static Analysis (Cppcheck)
+        if: runner.os == 'Linux'
+        run: |
           cppcheck --enable=warning,performance --error-exitcode=1 \
             --std=c++17 \
             --suppress=missingIncludeSystem \
             --suppress=missingInclude \
             ${{ matrix.project.path }}/src ${{ matrix.project.path }}/include
 
-      - name: Configure CMake with Coverage Flags
+      - name: Configure CMake
         run: |
-          cmake -S ${{ matrix.project.path }} -B build_${{ matrix.project.name }} \
-            -DCMAKE_CXX_FLAGS="--coverage -O0 -g"
+          cmake -S ${{ matrix.project.path }} -B build_${{ matrix.project.name }} -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Project and Tests
         run: |
-          cmake --build build_${{ matrix.project.name }}
+          cmake --build build_${{ matrix.project.name }} --config Release
 
       - name: Run Unit Tests
+        shell: bash
         run: |
-          cd build_${{ matrix.project.name }}
-          ./${{ matrix.project.test_bin }}
+          # В Windows бинарники лежат в подпапке Release
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            ./build_${{ matrix.project.name }}/Release/${{ matrix.project.test_bin }}.exe
+          else
+            ./build_${{ matrix.project.name }}/${{ matrix.project.test_bin }}
+          fi
 
       - name: Check Test Coverage (>90%)
+        if: runner.os == 'Linux'
         run: |
           gcovr -r ${{ matrix.project.path }} \
             --filter "${{ matrix.project.path }}/src/" \
@@ -65,15 +77,20 @@ jobs:
             build_${{ matrix.project.name }}
 
       - name: Package Release Artifact
+        shell: bash
         run: |
-          mkdir -p artifact_${{ matrix.project.name }}
-          cp build_${{ matrix.project.name }}/${{ matrix.project.app_bin }} artifact_${{ matrix.project.name }}/
+          mkdir -p artifact_${{ matrix.project.name }}_${{ matrix.os }}
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            cp build_${{ matrix.project.name }}/Release/${{ matrix.project.app_bin }}.exe artifact_${{ matrix.project.name }}_${{ matrix.os }}/
+          else
+            cp build_${{ matrix.project.name }}/${{ matrix.project.app_bin }} artifact_${{ matrix.project.name }}_${{ matrix.os }}/
+          fi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.project.name }}-linux
-          path: artifact_${{ matrix.project.name }}/
+          name: ${{ matrix.project.name }}-${{ matrix.os }}
+          path: artifact_${{ matrix.project.name }}_${{ matrix.os }}/
 
   publish-release:
     needs: build-test-and-lint
@@ -91,8 +108,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release_artifacts/dictionary-linux/*
-            release_artifacts/turing_machine-linux/*
+            release_artifacts/dictionary-ubuntu-latest/*
+            release_artifacts/dictionary-windows-latest/*
+            release_artifacts/turing_machine-ubuntu-latest/*
+            release_artifacts/turing_machine-windows-latest/*
 
   deploy-docs:
     needs: build-test-and-lint
