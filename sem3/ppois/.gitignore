@@ -1,0 +1,185 @@
+cat > gitignore/.gitignore <<'EOF'
+# ============================================================
+#  C++ / CMake / IDE / OS  — полный .gitignore
+# ============================================================
+
+# ---------- Build output ----------
+build/
+build-*/
+build_*/
+cmake-build-*/
+cmake-build-*/*
+out/
+bin/
+lib/
+obj/
+*.out
+*.app
+
+# ---------- CMake ----------
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+_deps/
+CPackConfig.cmake
+CPackSourceConfig.cmake
+*.cmake
+!CMakeLists.txt
+
+# ---------- Make / Ninja ----------
+Makefile
+makefile
+GNUmakefile
+*.mk
+!Makefile.am
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# ---------- Compiled objects / libs / binaries ----------
+*.o
+*.obj
+*.lo
+*.la
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.exe.*
+*.elf
+*.bin
+*.hex
+*.pdb
+*.ilk
+*.idb
+*.exp
+*.gch
+*.pch
+*.ipdb
+*.iobj
+
+# ---------- GoogleTest / Catch2 ----------
+_deps/
+googletest-*/
+googletest/
+catch2-*/
+Catch2-*/
+libgtest*
+libgmock*
+gtest/
+gmock/
+
+# ---------- caches / coverage ----------
+.cache/
+.ccache/
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+coverage/
+*.lcov
+lcov.info
+
+# ---------- clang / sanitizers ----------
+*.plist
+*.dSYM/
+*.dSYM
+*.log
+
+# ---------- CLion / JetBrains ----------
+.idea/
+*.iml
+*.ipr
+*.iws
+.tmp/
+*.kdev4
+.kdev4/
+
+# ---------- VSCode ----------
+.vscode/
+.vscode-test/
+
+# ---------- Visual Studio ----------
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.opendb
+ipch/
+Debug/
+Release/
+x64/
+x86/
+
+# ---------- Xcode ----------
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+
+# ---------- Eclipse / Qt Creator ----------
+.cproject
+.project
+.settings/
+*.pro.user
+*.pro.user.*
+*.qmlproject.user
+*.autosave
+
+# ---------- Vim / Emacs / Nano ----------
+*.swp
+*.swo
+*~
+.*.swp
+.#*
+\#*#
+*.kate-swp
+
+# ---------- OS junk ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---------- Env / secrets / local ----------
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+secrets/
+
+# ---------- Logs / temp ----------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
+
+# ---------- archives ----------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+EOF
