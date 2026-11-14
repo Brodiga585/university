@@ -1,0 +1,12 @@
+PROJECT_NAME           = "Lab 1 C++ Projects"
+PROJECT_BRIEF          = "Dictionary and Turing Machine"
+OUTPUT_DIRECTORY       = docs
+INPUT                  = lab1
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */tests/*
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+GENERATE_LATEX         = NO
+GENERATE_HTML          = YES
+HAVE_DOT               = YES
+UML_LOOK               = YES
