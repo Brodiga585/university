@@ -48,7 +48,14 @@ jobs:
             --suppress=missingInclude \
             ${{ matrix.project.path }}/src ${{ matrix.project.path }}/include
 
-      - name: Configure CMake
+      - name: Configure CMake (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -S ${{ matrix.project.path }} -B build_${{ matrix.project.name }} \
+            -DCMAKE_CXX_FLAGS="--coverage -O0 -g"
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
         run: |
           cmake -S ${{ matrix.project.path }} -B build_${{ matrix.project.name }} -DCMAKE_BUILD_TYPE=Release
 
@@ -59,7 +66,6 @@ jobs:
       - name: Run Unit Tests
         shell: bash
         run: |
-          # В Windows бинарники лежат в подпапке Release
           if [ "${{ runner.os }}" == "Windows" ]; then
             ./build_${{ matrix.project.name }}/Release/${{ matrix.project.test_bin }}.exe
           else
