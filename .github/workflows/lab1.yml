@@ -2,7 +2,7 @@ name: Lab 1 C++ CI/CD (Dictionary & Turing Machine)
 
 on:
   push:
-    branches: [ "main", "lab1-fixed", "feature/*" ]
+    branches: [ "main", "lab1-fixed" ]
     tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
@@ -15,11 +15,11 @@ jobs:
       matrix:
         project:
           - name: dictionary
-            path: sem3/ppois/lab1/english_russian_dictionary
+            path: lab1/english_russian_dictionary
             app_bin: dict_app
             test_bin: dict_tests
           - name: turing_machine
-            path: sem3/ppois/lab1/turing_machine
+            path: lab1/turing_machine
             app_bin: turing_app
             test_bin: turing_tests
 
