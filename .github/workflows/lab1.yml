@@ -11,6 +11,7 @@ jobs:
   build-test-and-lint:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         project:
           - name: dictionary
@@ -34,7 +35,9 @@ jobs:
       - name: Run Static Analysis (Cppcheck)
         run: |
           cppcheck --enable=warning,style,performance --error-exitcode=1 \
+            --std=c++17 \
             --suppress=missingIncludeSystem \
+            --suppress=missingInclude \
             ${{ matrix.project.path }}/src ${{ matrix.project.path }}/include
 
       - name: Configure CMake with Coverage Flags
@@ -48,7 +51,8 @@ jobs:
 
       - name: Run Unit Tests
         run: |
-          ./build_${{ matrix.project.name }}/${{ matrix.project.test_bin }}
+          cd build_${{ matrix.project.name }}
+          ./${{ matrix.project.test_bin }}
 
       - name: Check Test Coverage (>90%)
         run: |
