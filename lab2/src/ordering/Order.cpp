@@ -129,6 +129,10 @@ void Order::setPayment(std::unique_ptr<Payment> payment) {
     payment_ = std::move(payment);
 }
 
+Payment* Order::payment() {
+    return payment_.get();
+}
+
 const Payment* Order::payment() const {
     return payment_.get();
 }

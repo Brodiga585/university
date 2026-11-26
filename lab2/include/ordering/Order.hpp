@@ -44,6 +44,7 @@ public:
     Money total() const;
 
     void setPayment(std::unique_ptr<Payment> payment);
+    Payment* payment();
     const Payment* payment() const;
     bool hasPayment() const;
     bool isPaid() const;
