@@ -13,4 +13,5 @@ set(DICT_SOURCES
 add_executable(dict_app src/main.cpp ${DICT_SOURCES})
 
 enable_testing()
-add_executable(dict_tests tests/test_dictionaty.cpp ${DICT_SOURCES})
+
+add_executable(dict_tests tests/test_dictionary.cpp ${DICT_SOURCES})
