@@ -1,145 +1,156 @@
-name: Lab 1 C++ CI/CD (Dictionary & Turing Machine)
+name: Lab 1 CI/CD
 
 on:
   push:
-    branches: [ "main", "lab1-fixed", "feature/*" ]
-    tags: [ "v*" ]
+    branches: [main, lab1-fixed, "feature/*"]
+    tags: ["v*"]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build-test-and-lint:
+  linux:
+    name: Linux / ${{ matrix.project.name }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         project:
           - name: dictionary
             path: lab1/english_russian_dictionary
-            app_bin: dict_app
-            test_bin: dict_tests
-          - name: turing_machine
+            app: dict_app
+            tests: dict_tests
+          - name: turing-machine
             path: lab1/turing_machine
-            app_bin: turing_app
-            test_bin: turing_tests
-
+            app: turing_app
+            tests: turing_tests
+    env:
+      BUILD_DIR: build_${{ matrix.project.name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install build, lint and coverage tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake g++ cppcheck gcovr
+      - name: Install analysis and coverage tools
+        run: sudo apt-get update && sudo apt-get install -y cppcheck gcovr
 
-      - name: Run Static Analysis (Cppcheck)
+      - name: Run static analysis
         run: |
           cppcheck --enable=warning,performance --error-exitcode=1 \
             --std=c++17 \
             --suppress=missingIncludeSystem \
             --suppress=missingInclude \
-            ${{ matrix.project.path }}/src ${{ matrix.project.path }}/include
+            "${{ matrix.project.path }}/src" "${{ matrix.project.path }}/include"
 
-      - name: Configure CMake with Coverage Flags
-        run: |
-          cmake -S ${{ matrix.project.path }} -B build_${{ matrix.project.name }} \
-            -DCMAKE_CXX_FLAGS="--coverage -O0 -g"
+      - name: Configure CMake
+        run: >
+          cmake -S "${{ matrix.project.path }}" -B "${{ env.BUILD_DIR }}"
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_FLAGS="--coverage -O0 -g"
 
-      - name: Build Project and Tests
-        run: |
-          cmake --build build_${{ matrix.project.name }}
+      - name: Build
+        run: cmake --build "${{ env.BUILD_DIR }}" --parallel
 
-      - name: Run Unit Tests
-        run: |
-          cd build_${{ matrix.project.name }}
-          ./${{ matrix.project.test_bin }}
+      - name: Run unit tests
+        working-directory: ${{ env.BUILD_DIR }}
+        run: ./${{ matrix.project.tests }}
 
-      - name: Check Test Coverage (>90%)
+      - name: Check coverage
         run: |
-          gcovr -r ${{ matrix.project.path }} \
+          gcovr -r "${{ matrix.project.path }}" \
             --filter "${{ matrix.project.path }}/src/" \
             --exclude "${{ matrix.project.path }}/src/main.cpp" \
             --fail-under-line 90 \
             --print-summary \
-            build_${{ matrix.project.name }}
+            "${{ env.BUILD_DIR }}"
 
-      - name: Package Release Artifact
-        run: |
-          mkdir -p artifact_${{ matrix.project.name }}_ubuntu
-          cp build_${{ matrix.project.name }}/${{ matrix.project.app_bin }} artifact_${{ matrix.project.name }}_ubuntu/
-
-      - name: Upload Artifact
+      - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.project.name }}-ubuntu
-          path: artifact_${{ matrix.project.name }}_ubuntu/
+          name: ${{ matrix.project.name }}-linux
+          path: ${{ env.BUILD_DIR }}/${{ matrix.project.app }}
+          if-no-files-found: error
 
-  build-windows:
+  windows:
+    name: Windows / ${{ matrix.project.name }}
     runs-on: windows-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         project:
           - name: dictionary
             path: lab1/english_russian_dictionary
-            app_bin: dict_app
-          - name: turing_machine
+            app: dict_app.exe
+            tests: dict_tests.exe
+          - name: turing-machine
             path: lab1/turing_machine
-            app_bin: turing_app
-
+            app: turing_app.exe
+            tests: turing_tests.exe
+    env:
+      BUILD_DIR: build_${{ matrix.project.name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install CMake
-        run: choco install cmake -y
+      - name: Configure CMake
+        run: cmake -S "${{ matrix.project.path }}" -B "${{ env.BUILD_DIR }}"
 
-      - name: Configure CMake (Windows)
-        run: cmake -S ${{ matrix.project.path }} -B build_${{ matrix.project.name }} -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build "${{ env.BUILD_DIR }}" --config Release --parallel
 
-      - name: Build Project
-        run: cmake --build build_${{ matrix.project.name }} --config Release
+      - name: Run unit tests
+        working-directory: ${{ env.BUILD_DIR }}/Release
+        run: .\${{ matrix.project.tests }}
 
-      - name: Package Release Artifact
-        shell: bash
-        run: |
-          mkdir -p artifact_${{ matrix.project.name }}_windows
-          cp build_${{ matrix.project.name }}/Release/${{ matrix.project.app_bin }}.exe artifact_${{ matrix.project.name }}_windows/
-
-      - name: Upload Artifact
+      - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.project.name }}-windows
-          path: artifact_${{ matrix.project.name }}_windows/
+          path: ${{ env.BUILD_DIR }}/Release/${{ matrix.project.app }}
+          if-no-files-found: error
 
-  publish-release:
-    needs: [build-test-and-lint, build-windows]
+  release:
+    name: Publish release
+    needs: [linux, windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download All Artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release_artifacts
+          path: artifacts
 
-      - name: Publish to GitHub Releases
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            release_artifacts/dictionary-ubuntu/*
-            release_artifacts/dictionary-windows/*
-            release_artifacts/turing_machine-ubuntu/*
-            release_artifacts/turing_machine-windows/*
+          files: artifacts/*/*
 
-  deploy-docs:
-    needs: build-test-and-lint
+  docs:
+    name: Deploy documentation
+    needs: linux
+    # The github-pages environment allows deployments from main only.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: write
       id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -147,17 +158,16 @@ jobs:
       - name: Install Doxygen
         run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
 
-      - name: Generate Documentation
+      - name: Generate documentation
         run: doxygen Doxyfile
 
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Upload documentation
         uses: actions/upload-pages-artifact@v3
         with:
-          name: github-pages
-          path: ./docs/html
+          path: docs/html
 
       - name: Deploy to GitHub Pages
         id: deployment
