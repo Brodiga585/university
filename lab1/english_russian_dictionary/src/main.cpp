@@ -1,6 +1,9 @@
 #include <iostream>
 #include <string>
 #include "Dictionary.hpp"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 void printMenu() {
     std::cout << "\n=== ENGLISH-RUSSIAN DICTIONARY CLI ===\n"
@@ -15,6 +18,10 @@ void printMenu() {
 }
 
 int main() {
+    #ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+    #endif
     Dictionary dict;
     int choice = 0;
 
