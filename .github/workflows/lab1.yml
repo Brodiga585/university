@@ -34,7 +34,6 @@ jobs:
 
       - name: Run Static Analysis (Cppcheck)
         run: |
-          # Убрали style, чтобы не ругался на циклы в TuringMachine
           cppcheck --enable=warning,performance --error-exitcode=1 \
             --std=c++17 \
             --suppress=missingIncludeSystem \
@@ -66,17 +65,55 @@ jobs:
 
       - name: Package Release Artifact
         run: |
-          mkdir -p artifact_${{ matrix.project.name }}
-          cp build_${{ matrix.project.name }}/${{ matrix.project.app_bin }} artifact_${{ matrix.project.name }}/
+          mkdir -p artifact_${{ matrix.project.name }}_ubuntu
+          cp build_${{ matrix.project.name }}/${{ matrix.project.app_bin }} artifact_${{ matrix.project.name }}_ubuntu/
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.project.name }}-linux
-          path: artifact_${{ matrix.project.name }}/
+          name: ${{ matrix.project.name }}-ubuntu
+          path: artifact_${{ matrix.project.name }}_ubuntu/
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - name: dictionary
+            path: lab1/english_russian_dictionary
+            app_bin: dict_app
+          - name: turing_machine
+            path: lab1/turing_machine
+            app_bin: turing_app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install CMake
+        run: choco install cmake -y
+
+      - name: Configure CMake (Windows)
+        run: cmake -S ${{ matrix.project.path }} -B build_${{ matrix.project.name }} -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Project
+        run: cmake --build build_${{ matrix.project.name }} --config Release
+
+      - name: Package Release Artifact
+        shell: bash
+        run: |
+          mkdir -p artifact_${{ matrix.project.name }}_windows
+          cp build_${{ matrix.project.name }}/Release/${{ matrix.project.app_bin }}.exe artifact_${{ matrix.project.name }}_windows/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.project.name }}-windows
+          path: artifact_${{ matrix.project.name }}_windows/
 
   publish-release:
-    needs: build-test-and-lint
+    needs: [build-test-and-lint, build-windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -91,5 +128,37 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release_artifacts/dictionary-linux/*
-            release_artifacts/turing_machine-linux/*
+            release_artifacts/dictionary-ubuntu/*
+            release_artifacts/dictionary-windows/*
+            release_artifacts/turing_machine-ubuntu/*
+            release_artifacts/turing_machine-windows/*
+
+  deploy-docs:
+    needs: build-test-and-lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+
+      - name: Generate Documentation
+        run: doxygen Doxyfile
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: github-pages
+          path: ./docs/html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
